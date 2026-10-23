@@ -1,5 +1,7 @@
 # Hexcat Hollow
 
+**Play now:** https://ygmackilla.github.io/hexcat-hollow/
+
 A small 3D Halloween arena battler. Six kitty wizards fight in a glowing arena, and the last cat standing wins the round. Every round moves to a new arena (six in rotation). Bots fill every empty seat, and real players take over a bot's seat when they join, either on the same device or online.
 
 Built for Scout House: a static folder with no build step. Upload the folder to any static host (Cloudflare Pages: drag and drop).
