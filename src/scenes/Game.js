@@ -52,7 +52,7 @@ export class Game {
     this.active = true;
     this.mode = opts.mode;
     if (opts.p1devs) this.p1devs = opts.p1devs;
-    this.ended = false; this.endT = 0; this.aliveT = 0; this.shown = 0; this.sendT = 0; this.snapT = 0; this.helloT = 0;
+    this.ended = false; this.endT = 0; this.aliveT = 0; this.shown = 0; this.sendT = 0; this.snapT = 0; this.helloT = 0; this.helloAt = 0;
     this.outEvents.length = 0; this.joined = false; this.specT = 0; this.spec = -1;
     this.lastHp = -1; this.lastAlive = -1; this.lastScore = -1; this.hurtShown = '';
     this.pendShield = false; this.pendQ = false;
@@ -508,7 +508,13 @@ export class Game {
     if (!this.joined) return;
     for (let i = 0; i < m.w.length && i < world.wizards.length; i++) {
       const a = m.w[i], o = world.wizards[i];
-      o.x = a[0]; o.z = a[1]; o.yaw = a[2]; o.hp = a[3];
+      if (i === this.local && o.alive && (a[4] & 1)) {
+        // our own cat is predicted locally: snap only when far off, otherwise ease toward the host's position
+        const ex = a[0] - o.x, ez = a[1] - o.z, e2 = ex * ex + ez * ez;
+        if (e2 > 9) { o.x = a[0]; o.z = a[1]; o.vx = 0; o.vz = 0; }
+        else { const k = e2 > 1 ? 0.5 : 0.18; o.x += ex * k; o.z += ez * k; }
+      } else { o.x = a[0]; o.z = a[1]; }
+      o.yaw = a[2]; o.hp = a[3];
       const f = a[4];
       o.alive = !!(f & 1); o.human = !!(f & 2); o.slowT = f & 4 ? 1 : 0; o.burnT = f & 8 ? 1 : 0; o.invuln = f & 16 ? 1 : 0; o.inField = !!(f & 32); o.chan = !!(f & 64);
       o.power = a[5]; o.kills = a[6]; o.place = a[7]; o.powerT = a[8];
@@ -611,8 +617,12 @@ export class Game {
         this.readLocal(this.locals[0], lw);
         if (lw.inShield) { this.pendShield = true; lw.inShield = false; }
         if (lw.inQ) { this.pendQ = true; lw.inQ = false; }
+        // Predict our own cat so it answers the thumb instantly; the host's snapshots only nudge it back on course.
+        world.moveWizard(lw, dt);
       }
-      this.sendT += dt; this.helloT += dt;
+      const nowMs = performance.now();
+      if (!this.helloAt) this.helloAt = nowMs;
+      this.sendT += dt;
       if (this.sendT >= 0.05 && this.joined && lw && lw.alive) {
         this.sendT = 0;
         const msg = { t: 'i', mx: r2(lw.inMx), mz: r2(lw.inMz), yaw: r2(lw.inYaw), f: lw.inFire ? 1 : 0, s: this.pendShield ? 1 : 0, q: this.pendQ ? 1 : 0, c: this.chanSend ? 1 : 0 };
@@ -620,7 +630,8 @@ export class Game {
         net.sendHost(msg);
         this.pendShield = false; this.pendQ = false;
       }
-      if (this.helloT >= 1) { this.helloT = 0; net.sendHost(this.joined ? { t: 'p' } : { t: 'hello', staff: store.staff }); }
+      // keep-alive on the wall clock, so a slow phone never goes quiet long enough for the host to drop it
+      if (nowMs - this.helloAt >= 1000) { this.helloAt = nowMs; net.sendHost(this.joined ? { t: 'p' } : { t: 'hello', staff: store.staff }); }
       for (let i = 0; i < world.proj.length; i++) { const q = world.proj[i]; if (q.active) { q.x += q.vx * dt; q.z += q.vz * dt; } }
     }
 

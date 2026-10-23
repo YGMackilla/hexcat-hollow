@@ -63,8 +63,8 @@ export class GameOver {
     this.t = (this.t || 0) + dt;
     if (this.active && !this.waiting && this.t > 0.8 && input.confirmPressed()) this.again();
     if (this.data.mode === 'client') {
-      this.pingT = (this.pingT || 0) + dt;
-      if (this.pingT > 1) { this.pingT = 0; this.app.net.sendHost({ t: 'p' }); }
+      const nowMs = performance.now();
+      if (!this.pingAt || nowMs - this.pingAt > 1000) { this.pingAt = nowMs; this.app.net.sendHost({ t: 'p' }); }
     }
     // keep the arena alive behind the panel
     if (this.data.mode !== 'client') world.update(dt);
