@@ -20,7 +20,8 @@ export class Stage {
   constructor(host) {
     this.host = host;
     const coarse = matchMedia('(pointer: coarse)').matches;
-    this.maxDpr = coarse ? 1.5 : 2;
+    this.maxDpr = coarse ? 1.25 : 2;
+    this.coarse = coarse;
 
     const r = this.renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' });
     r.toneMapping = THREE.ACESFilmicToneMapping;
@@ -589,6 +590,7 @@ export class Stage {
         v.label = label;
         m.setFur(w.fur);
       }
+      if (w.staff !== v.staffId) { v.staffId = w.staff; if (m.setStaff) m.setStaff(w.staff); }
       if (!v.init) { v.x = w.x; v.z = w.z; v.yaw = w.yaw; v.px = w.x; v.pz = w.z; v.init = true; }
       v.x += (w.x - v.x) * k; v.z += (w.z - v.z) * k;
       v.yaw = angleLerp(v.yaw, w.yaw, 1 - Math.exp(-16 * dt));
@@ -762,7 +764,7 @@ export class Stage {
     // ambience
     this.emberT -= dt;
     if (this.emberT <= 0) {
-      this.emberT = 0.04;
+      this.emberT = this.coarse ? 0.1 : 0.04;
       const a = Math.random() * 6.283, d = Math.sqrt(Math.random()) * ARENA.max;
       this.fx.burst(Math.cos(a) * d, 0.2, Math.sin(a) * d, Math.random() < 0.6 ? this.embers[0] : this.embers[1], 1, 0.2, 3.2, 0.22, 0.9, 0);
     }

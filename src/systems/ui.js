@@ -29,6 +29,11 @@ export function buildUI(root) {
         <button class="btn pulse" id="btn-play">Play</button>
         <button class="btn alt" id="btn-join" style="display:none">Join friend</button>
       </div>
+      <div class="staffpick" id="staffpick">
+        <button class="iconbtn arrow" id="staff-prev" aria-label="Previous staff">&#9664;</button>
+        <div class="staffinfo"><small>YOUR STAFF</small><b id="staff-name">Moon Staff</b><span id="staff-how"></span></div>
+        <button class="iconbtn arrow" id="staff-next" aria-label="Next staff">&#9654;</button>
+      </div>
       <p class="msg" id="title-msg"></p>
       <p class="help" id="help-desktop"><b>WASD</b> move · <b>Mouse</b> aim · <b>Click</b> cast · <b>E</b> shield · <b>Q</b> spell · <b>R</b> Thundershock · <b>Tab</b> camera<br>Friends on this computer: <b>arrow keys + Enter</b>, or press <b>A</b> on a controller to jump in.</p>
       <p class="help" id="help-touch" style="display:none"><b>Left thumb</b> to move, <b>CAST</b> fires at the nearest cat.<br><b>Shield</b> blocks everything for a moment. Grab <b>dash</b> and <b>slow-mo</b> spells for your spell button.</p>
@@ -83,6 +88,7 @@ export function buildUI(root) {
         <div class="big" id="over-score">0</div>
         <p class="stat" id="over-detail"></p>
         <p class="newbest" id="over-best"></p>
+        <p class="unlock" id="over-unlock"></p>
         <div class="row">
           <button class="btn pulse" id="btn-again">Play again</button>
           <button class="btn ghost" id="btn-menu">Menu</button>
@@ -95,7 +101,7 @@ export function buildUI(root) {
   const $ = (id) => document.getElementById(id);
   const ui = {
     gl: $('gl'), boot: $('boot'), bootFill: $('boot-fill'), bootMsg: $('boot-msg'),
-    title: $('title'), btnPlay: $('btn-play'), btnJoin: $('btn-join'), titleMsg: $('title-msg'), titleBest: $('title-best'),
+    title: $('title'), staffName: $('staff-name'), staffHow: $('staff-how'), staffPrev: $('staff-prev'), staffNext: $('staff-next'), staffPick: $('staffpick'), btnPlay: $('btn-play'), btnJoin: $('btn-join'), titleMsg: $('title-msg'), titleBest: $('title-best'),
     helpDesktop: $('help-desktop'), helpTouch: $('help-touch'),
     hud: $('hud'), hurt: $('hurt'), controls: $('controls'), others: $('others'), joinhint: $('joinhint'),
     slotShield: $('slot-shield'), shieldCd: $('shield-cd'), slotQ: $('slot-q'), qImg: $('q-img'), qCd: $('q-cd'), qN: $('q-n'),
@@ -107,7 +113,7 @@ export function buildUI(root) {
     btnInvite: $('btn-invite'), btnLeave: $('btn-leave'), muteBtns: [$('mute-title'), $('mute-hud')],
     touch: $('touch'),
     over: $('over'), overH: $('over-h'), overPlace: $('over-place'), overScore: $('over-score'), overDetail: $('over-detail'),
-    overBest: $('over-best'), btnAgain: $('btn-again'), btnMenu: $('btn-menu'), overMsg: $('over-msg'),
+    overBest: $('over-best'), overUnlock: $('over-unlock'), btnAgain: $('btn-again'), btnMenu: $('btn-menu'), overMsg: $('over-msg'),
   };
 
   ui.show = (el) => el.classList.add('on');

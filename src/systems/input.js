@@ -68,9 +68,20 @@ export class Input {
     this.zone.addEventListener('pointermove', (e) => {
       if (e.pointerId !== this.stickId) return;
       let dx = e.clientX - this.stickX, dy = e.clientY - this.stickY;
-      const d = Math.hypot(dx, dy), max = 56;
-      if (d > max) { dx = dx / d * max; dy = dy / d * max; }
-      this.sx = dx / max; this.sz = dy / max;
+      const d = Math.hypot(dx, dy), max = 60;
+      if (d > max) {
+        // the base follows the thumb, so sliding past the edge keeps steering instead of getting stuck
+        const over = d - max;
+        this.stickX += dx / d * over; this.stickY += dy / d * over;
+        const r = this.root.getBoundingClientRect();
+        this.stick.style.left = (this.stickX - r.left) + 'px'; this.stick.style.top = (this.stickY - r.top) + 'px';
+        dx = dx / d * max; dy = dy / d * max;
+      }
+      // small dead zone, then a gentle curve: fine control near the centre, full speed at the edge
+      const m = Math.min(1, Math.hypot(dx, dy) / max);
+      const k = m < 0.12 ? 0 : Math.pow((m - 0.12) / 0.88, 0.8);
+      const len = Math.hypot(dx, dy) || 1;
+      this.sx = dx / len * k; this.sz = dy / len * k;
       this.knob.style.transform = `translate(${dx}px,${dy}px)`;
     });
     const end = (e) => {

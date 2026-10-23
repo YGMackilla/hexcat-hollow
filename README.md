@@ -27,6 +27,7 @@ Built for Scout House: a static folder with no build step. Upload the folder to 
 - **Thundershock ultimate:** earned every 2 knockouts and must be used within 5 seconds. Press R and the camera rises over the arena. Move the rune circle with the mouse (stick or thumb on other devices) and click to strike. While aiming you are frozen with your staff raised, and a moon sigil glows under you, so you are open to attack. The same circle then appears in the sky and on the ground, and half a second later lightning lands on everyone inside (45 damage).
 - **Camera views (Tab):** overhead, over-the-shoulder, first person. In the close-up views WASD moves relative to the camera and the mouse looks around (click once to lock the mouse). With several players on one screen the game stays overhead.
 - **Controls panel:** the controls are always shown on the left side of the screen during play (a compact version on phones), with a section added for each extra player on the device.
+- **Unlockable staffs:** pick your staff on the title screen (arrows or A/D). Eight to collect: Moon Staff (start), Jack-o'-Lantern (win a round), Candy Crusher (reach round 6), Bat Scepter (10 knockouts), Storm Crystal (5 Thundershocks), Bone Lord (25 knockouts), Eye of Doom (3 wins), Ghost Lantern (10 wins). Progress is saved in the browser and new unlocks are announced after each round. Online friends see your staff.
 - **Score:** 100 per knockout plus survival time, with a placement bonus. The best score is saved in the browser.
 
 ## Multiplayer
@@ -66,7 +67,7 @@ src/main.js           app setup, scene switching, main loop
 src/scenes/           Boot (loading bar), Title, Game, GameOver
 src/systems/          constants (palette, font, tuning), sim (game rules), bots, input, net (online play),
                       stage (3D scene, camera views, effects), mayu (character loader), models (props),
-                      maps, sfx (synth audio + music), ui (HUD), fx (particles, tweens), storage (best score)
+                      maps, staffs + staff-list (unlockable staffs), sfx (synth audio + music), ui (HUD), fx (particles, tweens), storage (best score)
 assets/models/        mayu-wizard.json
 assets/fx/            spell art
 assets/maps/          arena concept art (round title cards)

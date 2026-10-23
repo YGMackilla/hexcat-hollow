@@ -2,6 +2,7 @@
 // Fixed 60 Hz step, no allocations inside update().
 import { TUNE, OBST, SPAWNS, PICKUP_SPOTS, SLOT_COLORS, FUR_COLORS, NAMES, POWER, Q_CHARGES, setObstacles, setArena, arenaR, clampArena } from './constants.js';
 import { MAPS, SHAPES } from './maps.js';
+import { STAFFS } from './staff-list.js';
 import { thinkBot } from './bots.js';
 
 export const EV = {
@@ -15,7 +16,7 @@ function makeWizard(i) {
     x: 0, z: 0, yaw: 0, vx: 0, vz: 0, hp: TUNE.hp, power: 0, powerT: 0, cd: 0, slowT: 0, burnT: 0,
     burnOwner: -1, burnAcc: 0, invuln: 0, kills: 0, place: 0, ctl: null,
     shieldT: 0, shieldCd: 0, q: 0, qn: 0, qCd: 0, dashT: 0, dashX: 0, dashZ: 0, inField: false,
-    ult: 0, streak: 0, inUlt: false, ultX: 0, ultZ: 0, chan: false,
+    ult: 0, streak: 0, inUlt: false, ultX: 0, ultZ: 0, chan: false, staff: 'moon',
     inMx: 0, inMz: 0, inYaw: 0, inFire: false, inShield: false, inQ: false,
     brain: { t: 0, gx: 0, gz: 0, dir: 1, aimErr: 0, react: 0, target: -1, fireLatch: 0, shieldT: 0, ultT: 0 },
   };
@@ -71,6 +72,7 @@ export class World {
       used[n] = 1;
       w.name = n;
       w.human = humanSlots.indexOf(i) >= 0;
+      w.staff = STAFFS[(Math.random() * STAFFS.length) | 0].id; // bots show off random staffs
       w.alive = true; w.hp = TUNE.hp; w.power = 0; w.powerT = 0; w.cd = 0.6; w.slowT = 0; w.burnT = 0;
       w.burnAcc = 0; w.burnOwner = -1; w.invuln = TUNE.invuln; w.kills = 0; w.place = 0; w.ctl = null;
       w.shieldT = 0; w.shieldCd = 0; w.q = 0; w.qn = 0; w.qCd = 0; w.dashT = 0; w.inField = false;

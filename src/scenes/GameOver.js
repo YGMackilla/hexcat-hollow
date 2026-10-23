@@ -27,6 +27,8 @@ export class GameOver {
     ui.overBest.textContent = isBest ? 'NEW BEST!' : 'Best: ' + store.best;
     ui.overBest.style.animation = isBest ? '' : 'none';
     ui.overMsg.textContent = d.mode !== 'client' ? 'Next arena: ' + d.nextMap : '';
+    ui.overUnlock.textContent = d.unlocked && d.unlocked.length ? 'NEW STAFF UNLOCKED: ' + d.unlocked.join(', ') + '!' : '';
+    if (d.unlocked && d.unlocked.length) { sfx.play('ultready'); }
     ui.btnAgain.textContent = d.mode === 'client' ? 'Ready for next round' : 'Play again';
     ui.btnAgain.disabled = false;
     ui.show(ui.over);

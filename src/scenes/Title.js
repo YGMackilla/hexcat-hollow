@@ -1,5 +1,6 @@
 import { store } from '../systems/storage.js';
 import { roomFromUrl } from '../systems/net.js';
+import { STAFFS, STAFF_INDEX } from '../systems/staff-list.js';
 
 // Title screen with a bots-only match playing behind it.
 export class Title {
@@ -17,9 +18,16 @@ export class Title {
     const { ui } = app;
     ui.btnPlay.addEventListener('click', () => { if (this.active) this.go(null); });
     ui.btnJoin.addEventListener('click', () => { if (this.active) this.joinGo(); });
+    this.pick = Math.max(0, STAFF_INDEX[store.staff] || 0);
+    const step = (d) => { this.pick = (this.pick + d + STAFFS.length) % STAFFS.length; this.showStaff(); app.sfx.unlock(); app.sfx.play('click'); };
+    ui.staffPrev.addEventListener('click', () => { if (this.active) step(-1); });
+    ui.staffNext.addEventListener('click', () => { if (this.active) step(1); });
+    this.step = step;
     for (const b of ui.muteBtns) b.addEventListener('click', () => { app.sfx.unlock(); ui.setMuteIcon(app.sfx.toggle()); app.sfx.play('click'); });
     this.key = (e) => {
       if (!this.active || e.repeat) return;
+      if (e.code === 'ArrowLeft' || e.code === 'KeyA') { this.step(-1); return; }
+      if (e.code === 'ArrowRight' || e.code === 'KeyD') { this.step(1); return; }
       if (e.code === 'Enter' || e.code === 'Space') {
         e.preventDefault();
         if (this.room) this.joinGo(); else this.go(null);
@@ -47,6 +55,18 @@ export class Title {
     ui.titleBest.textContent = store.best > 0 ? 'Best score: ' + store.best : '';
     ui.setMuteIcon(sfx.muted);
     this.endT = 0;
+    this.showStaff();
+  }
+
+  // Show the browsed staff; only unlocked staffs are equipped. The nearest background wizard holds it as a preview.
+  showStaff() {
+    const { ui, world } = this.app, s = STAFFS[this.pick], ok = s.need(store.stats);
+    ui.staffName.textContent = s.name;
+    ui.staffHow.textContent = !ok ? 'Locked: ' + s.how.toLowerCase() + ' (' + s.prog(store.stats) + ')'
+      : s.how === 'Starting staff' ? 'Equipped' : 'Equipped (unlocked: ' + s.how.toLowerCase() + ')';
+    ui.staffPick.classList.toggle('locked', !ok);
+    if (ok) store.setStaff(s.id);
+    world.wizards[0].staff = s.id;
   }
 
   update(dt) {

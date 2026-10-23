@@ -3,6 +3,7 @@ import { EV } from '../systems/sim.js';
 import { net, roomLink } from '../systems/net.js';
 import { MAPS } from '../systems/maps.js';
 import { store } from '../systems/storage.js';
+import { STAFFS } from '../systems/staff-list.js';
 
 const CAM_NAMES = ['Overhead view', 'Over-the-shoulder view', 'First-person view'];
 
@@ -89,7 +90,8 @@ export class Game {
         else net.send(net.conns[i], { t: 'full' });
       }
       world.reset(humans);
-      for (const l of this.locals) world.wizards[l.slot].ctl = 'local';
+      for (const l of this.locals) { world.wizards[l.slot].ctl = 'local'; world.wizards[l.slot].staff = l.slot === this.locals[0].slot ? store.staff : this.randomUnlocked(); }
+      store.bestRound(this.round);
       for (const w of waiting) world.wizards[w.slot].ctl = w.c.peer;
       stage.setLocals(this.locals.map((l) => l.slot));
       this.fwd = net.mode === 'host';
@@ -103,6 +105,7 @@ export class Game {
       this.updateControls();
     }
     this.aim = null; this.overT = 0; this.pendUlt = null; this.ultQueue = null; app.stage.showUltAim(false);
+    this.unlockedAtStart = STAFFS.filter((s) => s.need(store.stats)).map((s) => s.id);
     ui.aimhint.classList.remove('on');
     // the Enter / A press that started this match must not also count as a join or a cast
     for (const c in input.taps) delete input.taps[c];
@@ -140,6 +143,7 @@ export class Game {
   cycleCam() {
     const { ui, sfx, input } = this.app;
     if (!this.active) return;
+    if (input.touch) { ui.toast('Phones use the overhead view', PAL.bone); return; }
     if (this.locals.length > 1) { ui.toast('Overhead only with several players on one screen', PAL.bone); return; }
     this.camMode = (this.camMode + 1) % 3;
     store.setCam(this.camMode);
@@ -156,7 +160,7 @@ export class Game {
     const { ui, input } = this.app;
     const groups = [];
     if (input.touch) {
-      groups.push({ title: '', rows: [['Stick', 'Move'], ['CAST', 'Cast (auto-aim)'], ['Shield', 'Block all damage'], ['Spell', 'Dash / slow-mo'], ['Bolt', 'Thundershock'], ['Cam', 'Camera view']] });
+      groups.push({ title: '', rows: [['Stick', 'Move (left side)'], ['CAST', 'Cast (auto-aim)'], ['Shield', 'Block all damage'], ['Spell', 'Dash / slow-mo'], ['Bolt', 'Thundershock']] });
     } else {
       groups.push({ title: this.locals.length > 1 ? 'P1 keyboard' : 'Controls', rows: [
         ['W / A / S / D', 'Move'], ['Mouse', 'Aim'], ['Click', 'Cast'], ['E', 'Shield'], ['Q', 'Dash / slow-mo'],
@@ -178,6 +182,11 @@ export class Game {
     ui.joinhint.textContent = kb2Free ? 'Another player? Arrow keys + Enter, or press A on a controller' : 'Another player? Press A on a controller';
   }
 
+  randomUnlocked() {
+    const ok = STAFFS.filter((s) => s.need(store.stats));
+    return ok[(Math.random() * ok.length) | 0].id;
+  }
+
   // ---------- same-device players ----------
   checkLocalJoins() {
     const { app } = this, { input, world, ui, sfx } = app;
@@ -194,7 +203,7 @@ export class Game {
         if (!o.human && o.alive && (!w || o.hp > w.hp)) w = o;
       }
       if (!w) return;
-      w.human = true; w.ctl = 'local'; w.inFire = false; w.chan = false; w.invuln = Math.max(w.invuln, 1.2);
+      w.human = true; w.ctl = 'local'; w.inFire = false; w.chan = false; w.invuln = Math.max(w.invuln, 1.2); w.staff = this.randomUnlocked();
       if (dev[0] === 'g') this.hasPad = true;
       const label = PLABEL[this.locals.length];
       this.locals.push({ slot: w.id, devs: [dev], label });
@@ -317,9 +326,9 @@ export class Game {
 
   // ---------- networking: host ----------
   roster() {
-    const ws = this.app.world.wizards, n = [], h = [];
-    for (let i = 0; i < ws.length; i++) { n.push(ws[i].name); h.push(ws[i].human ? 1 : 0); }
-    return { t: 'roster', n, h };
+    const ws = this.app.world.wizards, n = [], h = [], s = [];
+    for (let i = 0; i < ws.length; i++) { n.push(ws[i].name); h.push(ws[i].human ? 1 : 0); s.push(ws[i].staff); }
+    return { t: 'roster', n, h, s };
   }
 
   showRoom() {
@@ -376,7 +385,7 @@ export class Game {
       if (!o.human && o.alive && (!w || o.hp > w.hp)) w = o;
     }
     if (!w) { net.send(c, { t: 'full' }); return; }
-    w.human = true; w.ctl = c.peer; w.inFire = false; w.chan = false; w.invuln = Math.max(w.invuln, 1.2);
+    w.human = true; w.ctl = c.peer; w.inFire = false; w.chan = false; w.invuln = Math.max(w.invuln, 1.2); if (c.staff) w.staff = c.staff;
     net.send(c, { t: 'welcome', slot: w.id, roster: this.roster() });
     net.broadcast(this.roster());
     ui.toast(w.name + ' joined!', SLOT_COLORS[w.id]);
@@ -386,7 +395,7 @@ export class Game {
 
   hostData(c, m) {
     c.lastSeen = performance.now();
-    if (m && m.t === 'hello') { this.hostHello(c); return; }
+    if (m && m.t === 'hello') { if (typeof m.staff === 'string' && STAFFS.some((x) => x.id === m.staff)) c.staff = m.staff; this.hostHello(c); return; }
     if (!m || m.t !== 'i') return;
     const { world } = this.app;
     for (let i = 0; i < world.wizards.length; i++) {
@@ -466,7 +475,10 @@ export class Game {
 
   applyRoster(m) {
     const ws = this.app.world.wizards;
-    for (let i = 0; i < ws.length; i++) { if (m.n && m.n[i]) ws[i].name = String(m.n[i]).slice(0, 24); ws[i].human = !!(m.h && m.h[i]); }
+    for (let i = 0; i < ws.length; i++) {
+      if (m.n && m.n[i]) ws[i].name = String(m.n[i]).slice(0, 24); ws[i].human = !!(m.h && m.h[i]);
+      if (m.s && typeof m.s[i] === 'string' && STAFFS.some((x) => x.id === m.s[i])) ws[i].staff = m.s[i];
+    }
   }
 
   onNet(m) {
@@ -515,6 +527,7 @@ export class Game {
     }
     for (let i = 0; i < m.e.length; i++) { const e = m.e[i]; this.handleEvent(e[0], e[1], e[2], e[3], e[4], e[5], e[6], e[7]); }
     if (m.o && !world.over) { world.over = true; world.winner = m.o - 1; }
+    if (m.rd) this.clientRound = m.rd;
     if (typeof m.mp === 'number' && m.mp !== world.map) { world.setMap(m.mp); this.app.ui.showMap(m.rd || 1, MAPS[world.map].name, world.map); }
   }
 
@@ -542,6 +555,7 @@ export class Game {
         ui.feed(kl && kl.id !== v.id ? kl.name + ' knocked out ' + v.name : v.name + ' fizzled out', kl ? SLOT_COLORS[kl.id] : PAL.bone);
         if (aMe) { ui.toast(who(a) + 'Knocked out!', PAL.pink, solo); if (solo) ui.aliveSub.textContent = 'spectating'; }
         else if (bMe) ui.toast(who(b) + 'Nice hex! +100', PAL.orange);
+        if (b === this.local && a !== b) store.addStat('kos', 1);
         break;
       }
       case EV.PICK:
@@ -556,7 +570,7 @@ export class Game {
       case EV.BLOCK: sfx.play('block', aMe ? 1 : near * 0.7); if (aMe) ui.dmg(x, z, 'BLOCK', PAL.shield); break;
       case EV.DASH: sfx.play('dash', aMe ? 1 : near * 0.6); if (aMe) stage.shake(0.12); break;
       case EV.FIELD: sfx.play('trap', Math.max(near, 0.3)); break;
-      case EV.THUNDER: sfx.play('charge'); if (aMe) ui.toast(who(a) + 'THUNDERSHOCK!', 0x7ff3ff); break;
+      case EV.THUNDER: if (a === this.local) store.addStat('ults', 1); sfx.play('charge'); if (aMe) ui.toast(who(a) + 'THUNDERSHOCK!', 0x7ff3ff); break;
       case EV.STRIKE: sfx.play('thunder'); stage.shake(aMe ? 1.6 : 1.1); break;
       case EV.ULTREADY:
         if (aMe) { sfx.play('ultready'); if (!solo) ui.toast(who(a) + 'Thundershock ready!', 0x7ff3ff); }
@@ -573,7 +587,7 @@ export class Game {
     this.dt = dt;
     const client = this.mode === 'client';
     const lw = this.local >= 0 ? world.wizards[this.local] : null;
-    this.eff = this.locals.length === 1 && lw && lw.alive && !world.over ? this.camMode : 0;
+    this.eff = this.locals.length === 1 && lw && lw.alive && !world.over && !input.touch ? this.camMode : 0;
     if (this.eff === 0 && document.pointerLockElement) document.exitPointerLock();
     this.updateAim(dt);
     if (this.overT > 0) this.overT -= dt;
@@ -606,7 +620,7 @@ export class Game {
         net.sendHost(msg);
         this.pendShield = false; this.pendQ = false;
       }
-      if (this.helloT >= 1) { this.helloT = 0; net.sendHost(this.joined ? { t: 'p' } : { t: 'hello' }); }
+      if (this.helloT >= 1) { this.helloT = 0; net.sendHost(this.joined ? { t: 'p' } : { t: 'hello', staff: store.staff }); }
       for (let i = 0; i < world.proj.length; i++) { const q = world.proj[i]; if (q.active) { q.x += q.vx * dt; q.z += q.vz * dt; } }
     }
 
@@ -624,6 +638,8 @@ export class Game {
     if (world.over && !this.ended && (!client || this.joined)) {
       this.ended = true; this.endT = 0;
       const won = this.isLocal(world.winner);
+      if (world.winner === this.local && this.local >= 0) store.addStat('wins', 1);
+      if (this.mode === 'client') store.bestRound(this.clientRound || 1);
       sfx.play(won ? 'win' : 'lose');
       ui.clearToast();
       const label = won && this.locals.length > 1 ? this.locals[this.localIndex(world.winner)].label + ' WINS!' : won ? 'VICTORY!' : 'Round over';
@@ -733,6 +749,7 @@ export class Game {
     let winnerLabel = '';
     if (this.locals.length > 1 && this.isLocal(world.winner)) winnerLabel = this.locals[this.localIndex(world.winner)].label + ' wins!';
     else if (world.winner >= 0 && !won) winnerLabel = world.wizards[world.winner].name + ' won the round';
-    app.go('GameOver', { won, place, kills, base, bonus, score: base + bonus, mode: this.mode, secs: Math.round(this.aliveT), winnerLabel, players: this.locals.length, nextMap: MAPS[this.round % MAPS.length].name });
+    const fresh = STAFFS.filter((s) => s.need(store.stats) && this.unlockedAtStart.indexOf(s.id) < 0).map((s) => s.name);
+    app.go('GameOver', { won, place, kills, base, bonus, score: base + bonus, mode: this.mode, secs: Math.round(this.aliveT), winnerLabel, players: this.locals.length, nextMap: MAPS[this.round % MAPS.length].name, unlocked: fresh });
   }
 }

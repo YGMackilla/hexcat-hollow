@@ -1,6 +1,7 @@
 // Chunky low-poly models built from primitives. One consistent style: flat colours, glowing eyes, big hats.
 import * as THREE from 'three';
 import { PAL } from './constants.js';
+import { buildStaff } from './staffs.js';
 
 const G = {
   robe: new THREE.ConeGeometry(0.62, 1.25, 10),
@@ -67,6 +68,13 @@ export function makeWizard(robeHex, furHex) {
     setGlow(hex) { glow.color.setHex(hex); },
     cast() { staff.rotation.x = -0.9; },
     channel(on) { if (on) staff.rotation.x = -1.2; },
+    setStaff(id) {
+      if (this._skin) staff.remove(this._skin.group);
+      stick.visible = orb.visible = id === 'moon';
+      this._skin = null;
+      if (id === 'moon') return;
+      this._skin = buildStaff(id); this._skin.group.scale.setScalar(1.9); staff.add(this._skin.group);
+    },
     anim(dt, speed, happy) {
       const moving = Math.min(1, speed / 4);
       ph += dt * (3 + speed * 1.6); wagT += dt * (3.2 + moving * 2 + happy * 6);
@@ -75,6 +83,7 @@ export function makeWizard(robeHex, furHex) {
       tail.rotation.z = Math.sin(wagT) * (0.4 + happy * 0.3);
       orb.scale.setScalar(1 + Math.sin(ph * 2) * 0.1);
       staff.rotation.x *= Math.exp(-10 * dt);
+      if (this._skin) this._skin.tick(ph);
     },
   };
 }
