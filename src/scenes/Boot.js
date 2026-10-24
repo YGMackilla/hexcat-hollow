@@ -1,5 +1,6 @@
 import { Stage } from '../systems/stage.js';
 import { loadMayu } from '../systems/mayu.js';
+import { loadSkins } from '../systems/skins.js';
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const frame = () => new Promise((r) => requestAnimationFrame(() => r()));
@@ -17,7 +18,9 @@ export class Boot {
     await frame();
     try { await Promise.race([document.fonts.load("40px 'Chewy'"), wait(3000)]); } catch (e) { /* font optional at this point */ }
     set(15, 'Waking the kitty wizards...');
-    await loadMayu((f) => set(15 + Math.round(f * 40)));
+    await loadMayu((f) => set(15 + Math.round(f * 25)));
+    set(40, 'Polishing staffs and potions...');
+    await Promise.race([loadSkins((f) => set(40 + Math.round(f * 18))), wait(20000)]);
     for (let i = 0; i < 6; i++) { const im = new Image(); im.src = './assets/maps/map' + i + '.jpg'; }
     set(58, 'Lighting the pumpkins...');
     await frame();

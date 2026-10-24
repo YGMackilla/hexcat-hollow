@@ -10,7 +10,9 @@ import { VignetteShader } from '../../vendor/three-addons/shaders/VignetteShader
 import { PAL, TUNE, OBST, PICKUP_SPOTS, POWER_COLORS, SLOT_COLORS, FUR_COLORS, ROBE_COLORS, arenaR, ARENA } from './constants.js';
 import { makeMayuWizard, mayuReady } from './mayu.js';
 import { Particles, ease, angleLerp } from './fx.js';
-import { makeWizard, makeNameSprite, makeBar, makeTomb, makePickupMeshes, GEO, PROPS } from './models.js';
+import { makeWizard, makeNameSprite, makeBar, makeTomb, makePickupMeshes, makeProp, GEO, PROPS } from './models.js';
+import { skin } from './skins.js';
+import { STAFFS } from './staff-list.js';
 import { MAPS, SHAPES } from './maps.js';
 import { EV } from './sim.js';
 
@@ -142,7 +144,7 @@ export class Stage {
     // props that block movement and spells
     for (let i = 0; i < M.obst.length; i++) {
       const o = M.obst[i];
-      const p = (PROPS[o[3]] || makeTomb)();
+      const p = makeProp(o[3]);
       p.position.set(o[0], 0, o[1]);
       p.rotation.y = Math.atan2(-o[0], -o[1]) + (i % 2 ? 0.3 : -0.3);
       p.scale.setScalar(Math.max(0.75, Math.min(1.1, o[2] / 0.85)));
@@ -151,7 +153,7 @@ export class Stage {
     // scenery outside the outline for depth
     for (let i = 0; i < 30; i++) {
       const a = i * 2.399 + 0.4, d = shape(Math.atan2(Math.sin(a), Math.cos(a))) + 4 + (i * 7 % 16);
-      const p = (PROPS[M.far] || makeTomb)();
+      const p = makeProp(M.far);
       p.position.set(Math.cos(a) * d, M.edge === 'water' ? -0.2 : 0, Math.sin(a) * d); p.rotation.y = a * 3; p.scale.setScalar(0.8 + (i % 3) * 0.2);
       g.add(p);
     }
@@ -304,9 +306,14 @@ export class Stage {
 
     this.projViews = [];
     const pm = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    // swapped-in bolt models: each staff's own basic bolt (proj_<staff>) and one per element (bolt_<kind>)
+    this.boltSkins = {};
+    for (const s of STAFFS) { const m = skin('proj/' + s.id); if (m) this.boltSkins['proj/' + s.id] = m; }
+    ['base', 'fire', 'ice', 'storm', 'trap'].forEach((k) => { const m = skin('bolt/' + k); if (m) this.boltSkins['bolt/' + k] = m; });
     for (let i = 0; i < TUNE.maxProj; i++) {
       const m = new THREE.Mesh(GEO.bolt, pm.clone());
       m.visible = false; this.scene.add(m); this.projViews.push(m);
+      m.userData.looks = {}; m.userData.look = null;
     }
     this.pickViews = [];
     for (let i = 0; i < PICKUP_SPOTS.length; i++) {
@@ -314,6 +321,7 @@ export class Stage {
       pv.group.position.set(PICKUP_SPOTS[i][0], 1.15, PICKUP_SPOTS[i][1]);
       pv.group.visible = false; pv.kind = 0; pv.pop = 1; pv.active = false;
       this.scene.add(pv.group); this.pickViews.push(pv);
+      if (pv.pedestal) { pv.pedestal.position.set(PICKUP_SPOTS[i][0], 0, PICKUP_SPOTS[i][1]); this.scene.add(pv.pedestal); }
     }
     this.zaps = [];
     for (let i = 0; i < 8; i++) {
@@ -324,6 +332,31 @@ export class Stage {
       this.zaps.push({ line: l, t: 0 });
     }
     this.zapHead = 0;
+  }
+
+  // Swapped-in bolt model for one projectile (the staff's own bolt for basic shots, an element bolt otherwise).
+  showBoltLook(m, p, world, t, i) {
+    const K = ['base', 'fire', 'ice', 'storm', 'trap'];
+    let key = null;
+    if (p.kind === 0) {
+      const w = world.wizards && world.wizards[p.owner];
+      const pk = 'proj/' + (w && w.staff);
+      key = this.boltSkins[pk] ? pk : (this.boltSkins['bolt/base'] ? 'bolt/base' : null);
+    } else if (K[p.kind] && this.boltSkins['bolt/' + K[p.kind]]) key = 'bolt/' + K[p.kind];
+    const ud = m.userData;
+    if (key !== ud.look) {
+      if (ud.look && ud.looks[ud.look]) ud.looks[ud.look].visible = false;
+      if (key) {
+        if (!ud.looks[key]) { const c = this.boltSkins[key].clone(true); c.scale.setScalar(0.85); m.add(c); ud.looks[key] = c; }
+        ud.looks[key].visible = true;
+      }
+      ud.look = key;
+      m.material.visible = !key;
+    }
+    if (key) {
+      m.rotation.set(0, Math.atan2(p.vx, p.vz), 0);   // nose along the flight
+      ud.looks[key].rotation.z = t * 9 + i;            // a little spin
+    }
   }
 
   buildPost(coarse) {
@@ -733,6 +766,7 @@ export class Stage {
       m.position.set(p.x, 1.0, p.z);
       m.scale.setScalar(KIND_SCALE[p.kind] * (1 + Math.sin(t * 30 + i) * 0.1));
       m.material.color.setHex(p.kind === 0 ? SLOT_COLORS[p.owner] : POWER_COLORS[p.kind]);
+      this.showBoltLook(m, p, world, t, i);
       this.fx.burst(p.x, 1.0, p.z, p.kind === 0 ? SLOT_COLORS[p.owner] : POWER_COLORS[p.kind], 1, 0.4, 0.28, p.kind === 0 ? 0.35 : 0.5, 0, 0);
     }
 
@@ -746,6 +780,7 @@ export class Stage {
         pv.group.visible = true;
       }
       if (!p.active && pv.active) { pv.active = false; pv.group.visible = false; }
+      if (pv.pedestal) { pv.pedestal.visible = p.active; if (p.active) pv.pedestal.position.set(p.x, 0, p.z); }
       if (pv.active) {
         pv.pop = Math.min(1, pv.pop + dt * 2.5);
         pv.group.scale.setScalar(Math.max(0.001, ease.outBack(pv.pop)));

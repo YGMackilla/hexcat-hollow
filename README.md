@@ -102,3 +102,15 @@ vendor/               three.js r160 + addons, PeerJS 1.5.4
 - Automatic quality: if a device can't hold about 45 fps, the game lowers resolution first and then turns bloom off.
 - Fixed 60 Hz simulation. Projectiles, particles, fields, damage numbers and effects are pooled.
 - The game sends nothing anywhere except the online room traffic, and only when you invite or join.
+
+
+## Swappable 3D models
+
+The staffs, spell bolts, potions/pickups and arena props use the Meshy models from the VRChat world. They live in
+`assets/models/skins/` as plain `.glb` files and are listed in `assets/models/skins/skins.json`.
+
+- **Swap a model:** replace the `.glb` with a new one of the same name, or point that slot at a different file in `skins.json`.
+- **Go back to the classic look for one thing:** delete its line from `skins.json`.
+- **Play with all classic models:** add `?skins=off` to the address.
+- Sizes: staffs stand from y=0 (bottom) to y=1 (tip); bolts are 1 unit across and fly along +Z; pickups are 1 unit tall
+  and centred; the pickup pedestal and props stand on y=0 at their real height in metres.

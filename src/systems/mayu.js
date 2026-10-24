@@ -5,6 +5,7 @@ import { GLTFLoader } from '../../vendor/three-addons/loaders/GLTFLoader.js';
 import * as SkeletonUtils from '../../vendor/three-addons/utils/SkeletonUtils.js';
 import { GEO } from './models.js';
 import { buildStaff } from './staffs.js';
+import { hasSkin } from './skins.js';
 
 const URL = './assets/models/mayu-wizard.json'; // glTF with embedded data (also loads on hosts that don't serve .glb)
 const SCALE = 1.75;
@@ -140,13 +141,13 @@ export function makeMayuWizard(robeHex, furHex) {
   const hand = model.getObjectByName('Hand_R');
   const builtIn = [];
   model.traverse((o) => { if (o.isMesh && isStaffMesh(o)) builtIn.push(o); });
-  let skin = null, skinId = 'moon';
+  let skin = null, skinId = hasSkin('staff/moon') ? null : 'moon';
   const up = new THREE.Vector3(0, 1, 0);
   const setStaff = (id) => {
     if (id === skinId) return;
     skinId = id;
     if (skin) { skin.group.parent && skin.group.parent.remove(skin.group); skin = null; }
-    const custom = id !== 'moon' && hand && src.staffLine;
+    const custom = (id !== 'moon' || hasSkin('staff/moon')) && hand && src.staffLine;
     for (const o of builtIn) o.visible = !custom;
     if (!custom) return;
     skin = buildStaff(id);

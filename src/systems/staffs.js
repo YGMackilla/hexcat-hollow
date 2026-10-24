@@ -1,6 +1,7 @@
 // Unlockable staffs. Each is built from simple shapes in the game's chunky style, standing on the y axis
 // from y = 0 (bottom of the shaft) to y = 1 (tip), then scaled onto the wizard's hand. Cosmetic only.
 import * as THREE from 'three';
+import { skin } from './skins.js';
 
 export { STAFFS, STAFF_INDEX } from './staff-list.js';
 
@@ -26,6 +27,15 @@ export function buildStaff(id) {
   const glows = [];
   let tick = () => {};
   const orb = (r, y, c) => { const m = glow(c || 0xffe9a8); glows.push(m); const s = new THREE.Mesh(new THREE.SphereGeometry(r, 14, 10), m); s.position.y = y; g.add(s); return s; };
+
+  // a swapped-in 3D model (assets/models/skins/staff_<id>.glb), with a small glowing tip that still shows your power colour
+  const model = skin('staff/' + id);
+  if (model) {
+    g.add(model);
+    const tip = orb(0.035, 1.0);
+    tip.material.transparent = true; tip.material.opacity = 0.85;
+    return { group: g, glowMats: glows, tick: (t) => { tip.scale.setScalar(1 + Math.sin(t * 6) * 0.15); } };
+  }
 
   if (id === 'pumpkin') {
     shaft(g, M.vine, 0.02, 0.016, 0.8);

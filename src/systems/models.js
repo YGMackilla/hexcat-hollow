@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 import { PAL } from './constants.js';
 import { buildStaff } from './staffs.js';
+import { skin } from './skins.js';
 
 const G = {
   robe: new THREE.ConeGeometry(0.62, 1.25, 10),
@@ -182,7 +183,26 @@ export function makePickupMeshes() {
   trap.add(t1, t2, sand); g.add(trap);
   const ring = new THREE.Mesh(new THREE.RingGeometry(0.85, 1.15, 28), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55, depthWrite: false, side: THREE.DoubleSide }));
   ring.rotation.x = -Math.PI / 2; ring.position.y = -0.95; g.add(ring);
-  return { group: g, variants: [null, fire, ice, storm, heal, dash, trap], ring };
+  const variants = [null, fire, ice, storm, heal, dash, trap];
+  // swapped-in potions and charms (assets/models/skins/pickup_<kind>.glb)
+  ['', 'fire', 'ice', 'storm', 'heal', 'dash', 'trap'].forEach((k, i) => {
+    if (!i) return;
+    const m = skin('pickup/' + k);
+    if (!m) return;
+    m.scale.setScalar(1.15); m.visible = false;
+    g.remove(variants[i]); g.add(m); variants[i] = m;
+  });
+  // a stone pedestal on the ground under each pickup spot (stays still while the pickup bobs above it)
+  const pedestal = skin('pickup/pedestal');
+  if (pedestal) { pedestal.visible = false; ring.position.y = -0.45; }
+  return { group: g, variants, ring, pedestal };
+}
+
+// A prop for the arenas: the swapped-in model (assets/models/skins/prop_<name>.glb) or the classic built one.
+export function makeProp(name) {
+  const m = skin('prop/' + name);
+  if (m) return m;
+  return (PROPS[name] || makeTomb)();
 }
 
 // ---------- props for the other maps (same chunky style: flat colours, one glowing accent) ----------
