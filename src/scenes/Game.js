@@ -35,10 +35,7 @@ export class Game {
     this.camMode = store.cam; this.camYaw = 0; this.camPitch = 0; this.look = { x: 0, y: 0 };
     this.round = 1; this.aim = null; this.overT = 0; this.eff = 0; this.pendUlt = null; this.ultSpot = { x: 0, z: 0 };
     const canvas = () => document.querySelector('#gl canvas');
-    document.getElementById('app').addEventListener('pointerdown', (e) => {
-      if (!this.active || e.pointerType !== 'mouse' || e.target.tagName !== 'CANVAS') return;
-      if (this.eff > 0 && !this.aim && !document.pointerLockElement && canvas()) { try { canvas().requestPointerLock(); } catch (err) { /* ignore */ } }
-    });
+    // the camera is turned by holding the right mouse button and dragging (no pointer lock needed)
     this.onEvent = (type, a, b, x, z, k, x2, z2) => this.handleEvent(type, a, b, x, z, k, x2, z2);
   }
 
@@ -50,6 +47,7 @@ export class Game {
   enter(opts) {
     const { app } = this, { world, stage, ui, input } = app;
     this.active = true;
+    if (stage) stage.topYaw = 0;
     this.mode = opts.mode;
     if (opts.p1devs) this.p1devs = opts.p1devs;
     this.ended = false; this.endT = 0; this.aliveT = 0; this.shown = 0; this.sendT = 0; this.snapT = 0; this.helloT = 0; this.helloAt = 0;
@@ -151,7 +149,7 @@ export class Game {
     if (lw) this.camYaw = lw.yaw;
     this.camPitch = 0;
     if (this.camMode === 0 && document.pointerLockElement) document.exitPointerLock();
-    ui.toast(CAM_NAMES[this.camMode] + (this.camMode && !input.touch ? ' - click to look around' : ''), PAL.teal);
+    ui.toast(CAM_NAMES[this.camMode] + (!input.touch ? ' - hold right click and drag to turn' : ''), PAL.teal);
     sfx.play('click');
   }
 
@@ -164,7 +162,7 @@ export class Game {
     } else {
       groups.push({ title: this.locals.length > 1 ? 'P1 keyboard' : 'Controls', rows: [
         ['W / A / S / D', 'Move'], ['Mouse', 'Aim'], ['Click', 'Cast'], ['E', 'Shield'], ['Q', 'Dash / slow-mo'],
-        ['R', 'Thundershock'], ['Tab', 'Camera view'], ['M', 'Sound'],
+        ['R', 'Thundershock'], ['Right-drag', 'Turn camera'], ['Tab', 'Camera view'], ['M', 'Sound'],
       ] });
       for (let i = 0; i < this.locals.length; i++) {
         const L = this.locals[i];
@@ -232,7 +230,7 @@ export class Game {
     if (d > 1) { mx /= d; mz /= d; }
     // Thundershock: start aiming
     if (ult && w.ult > 0) { if (!this.aim) this.startAim(L, w); else if (this.aim.slot !== w.id) this.ultQueue = L; }
-    if (this.aim && this.aim.slot === w.id) { w.inMx = 0; w.inMz = 0; w.inFire = false; return; }
+    if (this.aim && this.aim.slot === w.id) { input.takeLook(this.look); w.inMx = 0; w.inMz = 0; w.inFire = false; return; }
     if (this.eff > 0 && L === this.locals[0]) {
       // over the shoulder / first person: move relative to where the camera looks
       input.takeLook(this.look);
@@ -252,6 +250,16 @@ export class Game {
       if (sh) w.inShield = true;
       if (q) w.inQ = true;
       return;
+    }
+    // overhead view: right-drag turns the camera; WASD / sticks stay relative to the screen
+    if (L === this.locals[0] && !input.touch) {
+      input.takeLook(this.look);
+      stage.topYaw -= this.look.x * 0.004;
+    }
+    if (stage.topYaw) {
+      const sy = Math.sin(stage.topYaw), cy = Math.cos(stage.topYaw);
+      const rx = cy * mx + sy * mz, rz = -sy * mx + cy * mz; mx = rx; mz = rz;
+      if (aimSet && !mouse) w.inYaw += stage.topYaw;
     }
     if (!aimSet && mouse) {
       stage.groundAt(input.px, input.py, this.out);

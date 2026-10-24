@@ -35,7 +35,7 @@ export function buildUI(root) {
         <button class="iconbtn arrow" id="staff-next" aria-label="Next staff">&#9654;</button>
       </div>
       <p class="msg" id="title-msg"></p>
-      <p class="help" id="help-desktop"><b>WASD</b> move · <b>Mouse</b> aim · <b>Click</b> cast · <b>E</b> shield · <b>Q</b> spell · <b>R</b> Thundershock · <b>Tab</b> camera<br>Friends on this computer: <b>arrow keys + Enter</b>, or press <b>A</b> on a controller to jump in.</p>
+      <p class="help" id="help-desktop"><b>WASD</b> move · <b>Mouse</b> aim · <b>Click</b> cast · <b>E</b> shield · <b>Q</b> spell · <b>R</b> Thundershock · <b>Right-drag</b> turn camera · <b>Tab</b> view<br>Friends on this computer: <b>arrow keys + Enter</b>, or press <b>A</b> on a controller to jump in.</p>
       <p class="help" id="help-touch" style="display:none"><b>Left thumb</b> to move, <b>CAST</b> fires at the nearest cat.<br><b>Shield</b> blocks everything for a moment. Grab <b>dash</b> and <b>slow-mo</b> spells for your spell button.</p>
       <p class="best" id="title-best"></p>
     </section>

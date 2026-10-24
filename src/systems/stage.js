@@ -36,6 +36,7 @@ export class Stage {
     this.scene.fog = new THREE.FogExp2(PAL.fog, 0.022);
     this.camera = new THREE.PerspectiveCamera(50, 1, 0.5, 220);
     this.camX = 0; this.camZ = 0; this.shakeAmp = 0; this.orbitA = 0; this.zoom = 1;
+    this.topYaw = 0; // overhead view turned by right-click drag (0 = the classic angle)
     this.time = 0;
     this.camAspectScale = 1;
 
@@ -415,10 +416,11 @@ export class Stage {
   placeCamera() {
     const s = this.camAspectScale * this.zoom, a = this.shakeAmp;
     const sx = a > 0.002 ? (Math.random() - 0.5) * a : 0, sz = a > 0.002 ? (Math.random() - 0.5) * a : 0;
-    this.camera.position.set(this.camX + sx, 15.5 * s, this.camZ + 11 * s + sz);
-    this.camera.lookAt(this.camX + sx, 0.6, this.camZ - 1.5);
+    const sy = Math.sin(this.topYaw), cy = Math.cos(this.topYaw);   // camera sits behind the player along -forward
+    this.camera.position.set(this.camX + sy * 11 * s + sx, 15.5 * s, this.camZ + cy * 11 * s + sz);
+    this.camera.lookAt(this.camX - sy * 1.5 + sx, 0.6, this.camZ - cy * 1.5);
     this.setNear(0.5);
-    this.camPos.copy(this.camera.position); this.camLook.set(this.camX, 0.6, this.camZ - 1.5);
+    this.camPos.copy(this.camera.position); this.camLook.set(this.camX - sy * 1.5, 0.6, this.camZ - cy * 1.5);
   }
 
   shake(a) { if (a > this.shakeAmp) this.shakeAmp = a; }

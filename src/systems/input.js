@@ -1,5 +1,6 @@
 // Every way to play, read into one "pad" per device so the game can treat them all alike:
-//   kb1   : WASD move, mouse aim, click / Space cast, E shield (or right click), Q spell     (player 1)
+//   kb1   : WASD move, mouse aim, click / Space cast, E shield (or a quick right click), Q spell,
+//           right-click hold + drag turns the camera (every view)                            (player 1)
 //   kb2   : arrow keys move, Enter cast, Right Shift shield, / spell, auto-aim               (a 2nd player on the same keyboard)
 //   gp0-3 : left stick move, right stick aim (auto-aim otherwise), RT / A cast, LB / B shield, RB / X spell
 //   touch : virtual stick, CAST, SHIELD and spell buttons (phones and tablets)
@@ -24,8 +25,15 @@ export class Input {
     this.stickId = -1; this.stickX = 0; this.stickY = 0; this.sx = 0; this.sz = 0;
     this.tFire = false; this.tShield = false; this.tQ = false; this.tUlt = false;
     this.lookDX = 0; this.lookDY = 0;
+    this.rMoved = 0; this.rStart = 0; this.dragLook = !this.touch; // right-drag turns the camera; a quick right click is a shield
     this.K = (c) => !!(this.keys[c] || this.taps[c]);
-    document.addEventListener('mousemove', (e) => { if (document.pointerLockElement) { this.lookDX += e.movementX || 0; this.lookDY += e.movementY || 0; } });
+    document.addEventListener('mousemove', (e) => {
+      const dragging = this.rightDown && this.dragLook && (e.buttons & 2);
+      if (document.pointerLockElement || dragging) {
+        this.lookDX += e.movementX || 0; this.lookDY += e.movementY || 0;
+        if (dragging) this.rMoved += Math.abs(e.movementX || 0) + Math.abs(e.movementY || 0);
+      }
+    });
 
     addEventListener('keydown', (e) => {
       if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' ', 'Slash', 'Tab'].includes(e.key) || e.code === 'Slash' || e.code === 'Space') e.preventDefault();
@@ -41,9 +49,20 @@ export class Input {
       if (e.pointerType !== 'mouse' || e.target.tagName !== 'CANVAS') return;
       this.px = e.clientX; this.py = e.clientY; this.hasPointer = true;
       if (e.button === 0) { this.mouseDown = true; this.clickTap = true; }
-      if (e.button === 2) { this.rightDown = true; this.rightTap = true; }
+      if (e.button === 2) {
+        this.rightDown = true; this.rMoved = 0; this.rStart = performance.now();
+        if (this.dragLook) document.body.classList.add('turning'); else this.rightTap = true;
+      }
     });
-    addEventListener('pointerup', (e) => { if (e.pointerType === 'mouse') { if (e.button === 0) this.mouseDown = false; if (e.button === 2) this.rightDown = false; } });
+    addEventListener('pointerup', (e) => {
+      if (e.pointerType !== 'mouse') return;
+      if (e.button === 0) this.mouseDown = false;
+      if (e.button === 2 && this.rightDown) {
+        this.rightDown = false; document.body.classList.remove('turning');
+        // a quick right click without dragging still raises the shield
+        if (this.dragLook && this.rMoved < 8 && performance.now() - this.rStart < 350) this.rightTap = true;
+      }
+    });
     addEventListener('contextmenu', (e) => e.preventDefault());
     document.addEventListener('gesturestart', (e) => e.preventDefault());
     let lastTap = 0;
@@ -109,7 +128,7 @@ export class Input {
     let mx = (k.KeyD ? 1 : 0) - (k.KeyA ? 1 : 0), mz = (k.KeyS ? 1 : 0) - (k.KeyW ? 1 : 0);
     norm(p, mx, mz);
     p.fire = this.mouseDown || this.clickTap || K('Space');
-    edges(p, K('KeyE') || this.rightDown || this.rightTap, K('KeyQ'), false, K('KeyR'));
+    edges(p, K('KeyE') || (this.rightDown && !this.dragLook) || this.rightTap, K('KeyQ'), false, K('KeyR'));
     p.mouseAim = (this.hasPointer || !!document.pointerLockElement) && !this.touch;
     if (mx || mz || p.fire) p.used = true;
     // keyboard 2 (arrows)

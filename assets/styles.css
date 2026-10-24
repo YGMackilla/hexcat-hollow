@@ -229,3 +229,6 @@ html, body {
 @media (prefers-reduced-motion: reduce) {
   .boot-pumpkin, .btn.pulse, .panel .newbest { animation: none; }
 }
+
+/* holding the right mouse button to turn the camera */
+body.turning, body.turning canvas { cursor: grabbing; }
